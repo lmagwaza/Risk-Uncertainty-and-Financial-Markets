@@ -1,0 +1,95 @@
+---
+title: "Risk, Uncertainty, and Financial Markets"
+author: "Luvuyo Magwaza"
+date: "2022-09-08"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+
+```
+
+```{r}
+library(tidyverse)
+library(tidyquant) 
+library(timetk)
+library(readxl)
+library(lmtest)
+library(tseries)
+library(vars)
+
+```
+
+ 
+# Data 
+```{r}
+# load in the dataset
+master_dataset<- read_excel("/Users/lmagwaza/Google Drive/USF Semesters /Semesters/2022 Fall/RA Work /Datasets/MDY QQQ SPY VIXX VIX 6-17 through 6-22.xlsx")
+```
+
+# Analyzing the SPY, VIX, and VVIX
+```{r}
+# filter the variables of interest: SPY, VIX, VVIX
+indices <- master_dataset %>% 
+  dplyr::select(Date, SPY, VIX, VVIX) %>% 
+  mutate(pct_SPY = log(SPY/lag(SPY, k = 1)),
+         pct_VIX = log(VIX/lag(VIX, k = 1)),
+         pct_VVIX = log(VVIX/lag(VVIX, k = 1))) %>% 
+  drop_na()
+```
+
+# Analysis 
+```{r}
+# compute summary stats for SPY VIX VVIX 
+mean(indices$SPY)
+mean(indices$VIX)
+mean(indices$VVIX)
+mean(indices$pct_SPY,na.rm = TRUE)
+mean(indices$pct_VIX,na.rm = TRUE)
+mean(indices$pct_VVIX,na.rm = TRUE)
+
+
+
+```
+
+```{r}
+# test for serial correlation 
+model1 <- lm(pct_SPY ~ Date, data = indices)
+model2 <- lm(pct_VIX ~ Date, data = indices)
+model3 <- lm(pct_VVIX ~ Date, data = indices)
+
+# Durbin Watson Test 
+dwtest(model1,  alternative = "two.sided")
+dwtest(model2,  alternative = "two.sided")
+dwtest(model3,  alternative = "two.sided")
+
+# test for stationarity 
+adf.test(indices$pct_SPY)
+adf.test(indices$pct_VIX)
+adf.test(indices$pct_VVIX)
+
+
+indices %>% 
+  ggplot() + geom_line(aes(x = Date, y = pct_SPY))
+
+indices %>% 
+  ggplot() + geom_line(aes(x = Date, y = pct_VIX))
+
+indices %>% 
+  ggplot() + geom_line(aes(x = Date, y = pct_VVIX))
+```
+
+```{r}
+# choosing lag length for VAR model
+indices %>% 
+  dplyr::select(pct_SPY, pct_VIX, pct_VVIX) -> pct_variables
+ 
+VARselect(pct_variables, lag.max = 12, type = "const")
+
+# running VAR model
+model_pct_SPY_VIX_VVIX <-VAR(pct_variables, p = 10, type = "const", season = NULL, exog = NULL)
+summary(model_pct_SPY_VIX_VVIX)
+```
+
