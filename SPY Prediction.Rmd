@@ -8,10 +8,6 @@ output:
 ---
 
 ```{r}
-
-```
-
-```{r}
 library(tidyverse)
 library(tidyquant) 
 library(timetk)
